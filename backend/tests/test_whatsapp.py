@@ -32,3 +32,11 @@ async def test_whatsapp_intent_and_contact_memory():
     )
     assert "cleared" in res_clear["response"].lower()
     assert len(memory_manager.short_term.get_messages()) == 0
+
+    # 4. Ambiguous request should not trigger tool calls
+    res_ambiguous = await agent.process_user_request(
+        user_text="Jarvis message",
+        broadcast_callback=mock_broadcast
+    )
+    assert "send_whatsapp_message" not in res_ambiguous["tools_invoked"]
+

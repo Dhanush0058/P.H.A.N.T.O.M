@@ -12,7 +12,9 @@ You have access to these specific tools:
 
 CRITICAL RULES:
 1. For normal conversations, chatting, answering questions, greetings, or persona changes: RESPOND DIRECTLY IN PLAIN NATURAL LANGUAGE. DO NOT OUTPUT JSON.
-2. ONLY when the user explicitly gives a command to interact with files, run terminal commands, or launch a specific program, output a JSON block in this exact format:
+2. If the user's input is incomplete, ambiguous, or just a greeting (e.g. "Jarvis", "Jarvis message", "Hello", "Help"), DO NOT call tools. Respond in natural language asking who/what they need.
+3. NEVER assume recipients or message bodies for communication tools like `send_whatsapp_message`.
+4. ONLY when the user explicitly gives a complete command to interact with files, run terminal commands, or launch a specific program, output a JSON block in this exact format:
 ```json
 {{
   "tool_call": {{
@@ -23,8 +25,8 @@ CRITICAL RULES:
   }}
 }}
 ```
-3. NEVER call `open_application` unless the user explicitly requested to open an app (e.g. "open Chrome", "launch VS Code").
-4. If a tool has already been executed in the conversation above, DO NOT repeat the tool call. Reply with a natural confirmation in plain text.
+5. NEVER call `open_application` unless the user explicitly requested to open an app (e.g. "open Chrome", "launch VS Code").
+6. If a tool has already been executed in the conversation above, DO NOT repeat the tool call. Reply with a natural confirmation in plain text.
 """
 
 class OllamaProvider(AIProvider):

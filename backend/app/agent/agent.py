@@ -176,7 +176,7 @@ class JarvisAgent:
                         "*Alternatively, configure your `GEMINI_API_KEY` or `OPENAI_API_KEY` in the JARVIS Settings modal (gear icon on the sidebar).*"
                     )
 
-            # Filter out irrelevant tool calls (e.g. model calling open_application for general questions or greetings)
+            # Filter out irrelevant or unprompted tool calls
             if ai_resp.tool_calls:
                 valid_calls = []
                 for tc in ai_resp.tool_calls:
@@ -188,8 +188,20 @@ class JarvisAgent:
                         if not any(w in lower_user for w in ["open", "launch", "start", "run", "code", "vscode"]):
                             logger.info(f"Filtering out false positive '{tc.name}' for request '{user_text}'")
                             continue
+                    elif tc.name == "send_whatsapp_message":
+                        # Require explicit whatsapp context and not just single ambiguous word
+                        if not any(w in lower_user for w in ["whatsapp", "text", "send", "msg"]) or len(lower_user.split()) < 3:
+                            logger.info(f"Filtering out unprompted/ambiguous '{tc.name}' for request '{user_text}'")
+                            continue
                     valid_calls.append(tc)
                 ai_resp.tool_calls = valid_calls
+
+                # If the only tool call was filtered out due to ambiguity, ask for clarification
+                if not ai_resp.tool_calls and not ai_resp.content:
+                    if "message" in lower_user:
+                        ai_resp.content = "Who would you like to message on WhatsApp, and what would you like the message to say?"
+                    else:
+                        ai_resp.content = "I'm here. How can I assist you?"
 
             # If the model requested tool calls
             if ai_resp.tool_calls:
