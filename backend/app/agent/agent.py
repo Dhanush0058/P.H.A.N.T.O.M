@@ -73,6 +73,14 @@ class JarvisAgent:
 
         lower_user = user_text.lower().strip()
 
+        # Handle clear chat / reset
+        if lower_user in ["clear chat", "clear history", "reset", "reset chat", "new chat", "new conversation", "clear"]:
+            memory_manager.short_term.clear()
+            reply = "Conversation context cleared. What can I help you with?"
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
         # Handle direct assistant identity/name change
         name_match = re.search(r'(?:change\s+your\s+name\s+to|call\s+yourself|your\s+name\s+is\s+now|name\s+yourself)\s+(?:a\s+|an\s+)?([a-zA-Z0-9_\-]+)', lower_user)
         if name_match:
@@ -83,6 +91,44 @@ class JarvisAgent:
             await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
             await broadcast("assistant.state_change", {"state": "IDLE"})
             return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
+        # Handle contact phone saving (e.g. "remember Govardhan's number is +919347249697")
+        contact_save = re.search(r'(?:remember|save\s+contact|save)\s+([a-zA-Z0-9_\-]+)(?:\'s)?\s*(?:phone|number|phone\s+number|contact)?\s*(?:is|as|=|:)?\s*(\+?[0-9\s\-]{7,15})', lower_user)
+        if contact_save:
+            c_name = contact_save.group(1).strip().lower()
+            c_phone = "".join([c for c in contact_save.group(2) if c.isdigit() or c == "+"])
+            await memory_manager.long_term.remember(f"contact_{c_name}", c_phone, memory_type="contact")
+            await memory_manager.long_term.remember(c_name, c_phone, memory_type="contact")
+            reply = f"I've saved {c_name.capitalize()}'s phone number as {c_phone}."
+            memory_manager.short_term.add_message("assistant", reply)
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
+        # Handle direct WhatsApp automation without hallucination
+        wa_match1 = re.search(r'(?:open\s+(?:your\s+)?whatsapp\s+)?search\s+for\s+(?:the\s+)?([a-zA-Z0-9_+]+)\s+and\s+(?:message|text|send\s+message\s+to)\s+(?:him|her|them)?\s*(?:like|as|saying|that|with)?\s*[:"\'\s]*(.*?)$', user_text, re.I)
+        wa_match2 = re.search(r'(?:send\s+(?:a\s+)?whatsapp(?:\s+message)?|open\s+(?:your\s+)?whatsapp\s+(?:and\s+)?message|whatsapp\s+message|message\s+on\s+whatsapp)\s+(?:to\s+|for\s+)?([a-zA-Z0-9_+]+)?\s*(?:as|like|saying|that|with|text)?\s*[:"\'\s]*(.*?)$', user_text, re.I)
+        
+        wa_info = None
+        if wa_match1:
+            wa_info = {"recipient": wa_match1.group(1).strip(), "message": wa_match1.group(2).strip().strip('"\'') or "Hi"}
+        elif wa_match2:
+            r = (wa_match2.group(1) or "").strip()
+            m = (wa_match2.group(2) or "").strip().strip('"\'') or "Hi"
+            if r.lower() not in ["as", "like", "saying", "that", ""]:
+                wa_info = {"recipient": r, "message": m}
+            else:
+                wa_info = {"recipient": "", "message": m}
+
+        if wa_info:
+            await broadcast("assistant.state_change", {"state": "EXECUTING"})
+            await broadcast("assistant.tool_call", {"tool_id": "call_whatsapp", "name": "send_whatsapp_message", "arguments": wa_info})
+            res = await tool_executor.execute_tool("send_whatsapp_message", wa_info, ws_broadcast=broadcast)
+            reply = res.message or (f"WhatsApp message sent to {wa_info['recipient']}." if res.success else f"Error: {res.error}")
+            memory_manager.short_term.add_message("assistant", reply)
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": ["send_whatsapp_message"]})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": ["send_whatsapp_message"], "plan": {"goal": user_text, "steps": []}}
 
         # Plan task if complex
         plan = await self.planner.plan(user_goal=user_text)

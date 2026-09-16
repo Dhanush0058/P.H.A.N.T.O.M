@@ -145,7 +145,7 @@ class SendWhatsAppMessageTool(BaseTool):
             },
             "recipient": {
                 "type": "string",
-                "description": "Optional phone number with country code (e.g. '+919876543210') or 'myself'"
+                "description": "Optional contact name (e.g. 'Govardhan', 'Daddy', 'myself') or phone number with country code (e.g. '+919876543210')"
             }
         },
         "required": ["message"]
@@ -156,66 +156,108 @@ class SendWhatsAppMessageTool(BaseTool):
         import os
         import asyncio
         import subprocess
-
-        actual_message = message or kwargs.get("text") or kwargs.get("msg") or kwargs.get("body") or "Hi"
-        encoded_msg = urllib.parse.quote(actual_message)
-        clean_recipient = ""
-        actual_recipient = recipient or kwargs.get("to") or kwargs.get("phone") or kwargs.get("contact")
         from backend.app.memory.manager import memory_manager
 
+        actual_message = str(message or kwargs.get("text") or kwargs.get("msg") or kwargs.get("body") or "Hi").strip()
+        encoded_msg = urllib.parse.quote(actual_message)
+        clean_recipient = ""
+        actual_recipient = str(recipient or kwargs.get("to") or kwargs.get("phone") or kwargs.get("contact") or "").strip()
+
         if actual_recipient:
-            rec_clean = actual_recipient.strip().lower()
+            rec_clean = actual_recipient.lower()
             if rec_clean in ["myself", "self", "me", "user"]:
-                # Lookup user's own phone
                 user_phone = await memory_manager.get_user_profile_value("phone") or await memory_manager.get_user_profile_value("phone_number")
                 if user_phone:
                     clean_recipient = "".join([c for c in str(user_phone) if c.isdigit() or c == "+"])
             else:
-                # Check if it contains digits directly
                 digits = "".join([c for c in actual_recipient if c.isdigit() or c == "+"])
                 if len(digits) >= 7:
                     clean_recipient = digits
                 else:
-                    # Look up contact name in memory (e.g. key="govardhan", key="mom")
-                    contact_phone = await memory_manager.get_user_profile_value(rec_clean)
+                    # Look up contact name in memory (e.g. 'govardhan', 'contact_govardhan', 'daddy', 'mom')
+                    contact_phone = (
+                        await memory_manager.get_user_profile_value(rec_clean) or
+                        await memory_manager.get_user_profile_value(f"contact_{rec_clean}") or
+                        await memory_manager.long_term.recall(rec_clean) or
+                        await memory_manager.long_term.recall(f"contact_{rec_clean}")
+                    )
                     if contact_phone:
                         clean_recipient = "".join([c for c in str(contact_phone) if c.isdigit() or c == "+"])
 
-        if clean_recipient:
-            uri = f"whatsapp://send?phone={clean_recipient}&text={encoded_msg}"
-            web_url = f"https://web.whatsapp.com/send?phone={clean_recipient}&text={encoded_msg}"
-            msg_target = f"to {actual_recipient or clean_recipient}"
-        else:
-            uri = f"whatsapp://send?text={encoded_msg}"
-            web_url = f"https://web.whatsapp.com/send?text={encoded_msg}"
-            if actual_recipient and actual_recipient.lower() not in ["myself", "self", "me"]:
-                msg_target = f"for {actual_recipient} (contact number not in memory, please select from WhatsApp)"
-            else:
-                msg_target = ""
-
         try:
-            # Try native WhatsApp protocol
-            try:
-                os.startfile(uri)
-            except Exception:
+            if clean_recipient:
+                # Direct URI with phone number
+                uri = f"whatsapp://send?phone={clean_recipient}&text={encoded_msg}"
+                web_url = f"https://web.whatsapp.com/send?phone={clean_recipient}&text={encoded_msg}"
                 try:
-                    subprocess.Popen(f'start "" "{uri}"', shell=True)
+                    os.startfile(uri)
                 except Exception:
-                    os.startfile(web_url)
+                    try:
+                        subprocess.Popen(f'start "" "{uri}"', shell=True)
+                    except Exception:
+                        os.startfile(web_url)
 
-            # Wait briefly and press enter if window focuses
-            await asyncio.sleep(1.5)
-            try:
-                pyautogui.press("enter")
-            except Exception:
-                pass
+                await asyncio.sleep(1.8)
+                try:
+                    pyautogui.press("enter")
+                except Exception:
+                    pass
 
-            target = f"to {recipient}" if recipient else ""
-            return ToolResult(
-                success=True,
-                data={"message": message, "recipient": recipient, "uri": uri},
-                message=f"WhatsApp opened with message '{message}' {target}."
-            )
+                target_label = f"to {actual_recipient} ({clean_recipient})" if actual_recipient and actual_recipient != clean_recipient else f"to {clean_recipient}"
+                return ToolResult(
+                    success=True,
+                    data={"message": actual_message, "recipient": clean_recipient, "uri": uri},
+                    message=f"WhatsApp opened with message '{actual_message}' {target_label}."
+                )
+            elif actual_recipient and actual_recipient.lower() not in ["myself", "self", "me"]:
+                # Contact name specified but no phone stored: open WhatsApp, search contact name, type message and send!
+                try:
+                    os.startfile("whatsapp:")
+                except Exception:
+                    try:
+                        subprocess.Popen('start "" "whatsapp:"', shell=True)
+                    except Exception:
+                        os.startfile("https://web.whatsapp.com")
+
+                await asyncio.sleep(2.0)
+                try:
+                    # Focus search in WhatsApp desktop with Ctrl+F
+                    pyautogui.hotkey("ctrl", "f")
+                    await asyncio.sleep(0.5)
+                    pyautogui.write(actual_recipient, interval=0.03)
+                    await asyncio.sleep(1.0)
+                    pyautogui.press("enter")
+                    await asyncio.sleep(0.8)
+                    # Type message and send
+                    pyautogui.write(actual_message, interval=0.03)
+                    await asyncio.sleep(0.3)
+                    pyautogui.press("enter")
+                except Exception as ui_err:
+                    pass
+
+                return ToolResult(
+                    success=True,
+                    data={"message": actual_message, "recipient": actual_recipient},
+                    message=f"WhatsApp opened, searched for '{actual_recipient}', and sent '{actual_message}'."
+                )
+            else:
+                # General WhatsApp send
+                uri = f"whatsapp://send?text={encoded_msg}"
+                try:
+                    os.startfile(uri)
+                except Exception:
+                    subprocess.Popen(f'start "" "{uri}"', shell=True)
+                await asyncio.sleep(1.5)
+                try:
+                    pyautogui.press("enter")
+                except Exception:
+                    pass
+                return ToolResult(
+                    success=True,
+                    data={"message": actual_message},
+                    message=f"WhatsApp opened with message '{actual_message}'."
+                )
+
         except Exception as e:
             return ToolResult(success=False, error=f"Could not open WhatsApp: {str(e)}")
 

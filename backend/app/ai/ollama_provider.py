@@ -87,7 +87,9 @@ class OllamaProvider(AIProvider):
         if augmented_system:
             formatted_messages.append({"role": "system", "content": augmented_system})
 
-        for m in messages:
+        # Keep only the last 6 recent turns to prevent cross-turn hallucination and speed up local inference
+        recent_messages = messages[-6:] if len(messages) > 6 else messages
+        for m in recent_messages:
             formatted_messages.append({"role": m.role, "content": m.content or ""})
 
         payload = {
