@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from typing import Optional, Callable, Dict, Any, List
 from backend.app.ai.base import AIProvider, AIMessage, AIResponse
 from backend.app.ai.omniroute import OmniRouteProvider
@@ -70,6 +71,19 @@ class JarvisAgent:
         # Save user message to short term memory
         memory_manager.short_term.add_message("user", user_text)
 
+        lower_user = user_text.lower().strip()
+
+        # Handle direct assistant identity/name change
+        name_match = re.search(r'(?:change\s+your\s+name\s+to|call\s+yourself|your\s+name\s+is\s+now|name\s+yourself)\s+(?:a\s+|an\s+)?([a-zA-Z0-9_\-]+)', lower_user)
+        if name_match:
+            new_name = name_match.group(1).capitalize()
+            await memory_manager.long_term.remember("assistant_name", new_name, memory_type="preference")
+            reply = f"Understood. My name has been changed to {new_name}. How can I assist you today?"
+            memory_manager.short_term.add_message("assistant", reply)
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
         # Plan task if complex
         plan = await self.planner.plan(user_goal=user_text)
         if len(plan.steps) > 1:
@@ -115,6 +129,21 @@ class JarvisAgent:
                         "2. Click **Connections / Add Provider** and paste any free key (e.g. Groq, Google AI Studio, Mistral, GitHub Models).\n\n"
                         "*Alternatively, configure your `GEMINI_API_KEY` or `OPENAI_API_KEY` in the JARVIS Settings modal (gear icon on the sidebar).*"
                     )
+
+            # Filter out irrelevant tool calls (e.g. model calling open_application for general questions or greetings)
+            if ai_resp.tool_calls:
+                valid_calls = []
+                for tc in ai_resp.tool_calls:
+                    if tc.name == "open_application":
+                        app_arg = str(tc.arguments.get("app_name", "")).lower()
+                        if not any(w in lower_user for w in ["open", "launch", "start", "run", app_arg]) and app_arg != "vscode":
+                            logger.info(f"Filtering out irrelevant tool call '{tc.name}' for request '{user_text}'")
+                            continue
+                        if not any(w in lower_user for w in ["open", "launch", "start", "run", "code", "vscode"]):
+                            logger.info(f"Filtering out false positive '{tc.name}' for request '{user_text}'")
+                            continue
+                    valid_calls.append(tc)
+                ai_resp.tool_calls = valid_calls
 
             # If the model requested tool calls
             if ai_resp.tool_calls:

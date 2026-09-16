@@ -11,8 +11,8 @@ You have access to these specific tools:
 {tool_descriptions}
 
 CRITICAL RULES:
-1. For normal conversations, chatting, answering questions, or greetings: RESPOND DIRECTLY IN PLAIN NATURAL LANGUAGE. DO NOT USE JSON.
-2. ONLY when you genuinely need to interact with the user's computer or execute a tool from the list above, output a JSON block in this exact format:
+1. For normal conversations, chatting, answering questions, greetings, or persona changes: RESPOND DIRECTLY IN PLAIN NATURAL LANGUAGE. DO NOT OUTPUT JSON.
+2. ONLY when the user explicitly gives a command to interact with files, run terminal commands, or launch a specific program, output a JSON block in this exact format:
 ```json
 {{
   "tool_call": {{
@@ -23,7 +23,8 @@ CRITICAL RULES:
   }}
 }}
 ```
-3. If a tool has already been executed in the conversation above, DO NOT repeat the tool call. Reply with a natural confirmation in plain text.
+3. NEVER call `open_application` unless the user explicitly requested to open an app (e.g. "open Chrome", "launch VS Code").
+4. If a tool has already been executed in the conversation above, DO NOT repeat the tool call. Reply with a natural confirmation in plain text.
 """
 
 class OllamaProvider(AIProvider):
