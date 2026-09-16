@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  jarvis-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jarvis-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  jarvis-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: jarvis-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - jarvis-backend
+    restart: unless-stopped
