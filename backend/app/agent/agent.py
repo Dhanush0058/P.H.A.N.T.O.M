@@ -105,6 +105,61 @@ class JarvisAgent:
             await broadcast("assistant.state_change", {"state": "IDLE"})
             return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
 
+        # Handle contact phone retrieval (e.g. "give me the number of Govardhan from WhatsApp", "what is Govardhan's phone number")
+        contact_query1 = re.search(r'(?:give|tell|what\s+is|get|show|find)\s+(?:me\s+)?(?:the\s+)?(?:phone\s+number|phone|number|contact(?:\s+details|\s+info)?)\s+(?:of|for)?\s*([a-zA-Z0-9_\-]+)', lower_user)
+        contact_query2 = re.search(r'(?:what\s+is|get|show|find)\s+([a-zA-Z0-9_\-]+)(?:\'s)?\s*(?:phone|number|phone\s+number|contact)', lower_user)
+        
+        target_contact = None
+        if contact_query1:
+            target_contact = contact_query1.group(1).strip().lower()
+        elif contact_query2:
+            target_contact = contact_query2.group(1).strip().lower()
+
+        if target_contact and target_contact not in ["all", "my", "the", "system", "weather"]:
+            # Clean filler words like 'from' or 'whatsapp' if caught in the group
+            target_contact = re.sub(r'\s+(?:from|in|on)\s+whatsapp.*$', '', target_contact).strip()
+            # Look up contact in memory
+            found_phone = (
+                await memory_manager.get_user_profile_value(target_contact) or
+                await memory_manager.get_user_profile_value(f"contact_{target_contact}") or
+                await memory_manager.long_term.recall(target_contact) or
+                await memory_manager.long_term.recall(f"contact_{target_contact}")
+            )
+            if isinstance(found_phone, dict) and "value" in found_phone:
+                found_phone = found_phone["value"]
+
+            if found_phone:
+                reply = f"The phone number for {target_contact.capitalize()} is {found_phone}."
+            else:
+                reply = f"I do not have a saved phone number for {target_contact.capitalize()} yet. You can say: 'Remember {target_contact.capitalize()}'s number is +91...' to save it."
+
+            memory_manager.short_term.add_message("assistant", reply)
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
+        # Handle list all contacts (e.g. "list contacts", "show contacts")
+        if re.search(r'^(?:list|show|view|get)\s+(?:all\s+)?(?:my\s+)?contacts', lower_user):
+            all_mems = await memory_manager.long_term.search(memory_type="contact")
+            if not all_mems:
+                # Also check general memories
+                all_mems = [m for m in (await memory_manager.long_term.search()) if m.get("type") == "contact" or "contact_" in m.get("key", "")]
+
+            if all_mems:
+                unique_contacts = {}
+                for m in all_mems:
+                    k = m["key"].replace("contact_", "").capitalize()
+                    unique_contacts[k] = m["value"]
+                contact_list = "\n".join([f"• **{k}**: {v}" for k, v in unique_contacts.items()])
+                reply = f"Here are your saved contacts:\n\n{contact_list}"
+            else:
+                reply = "You don't have any contacts saved yet. Say 'Remember <name>'s number is <phone>' to add one."
+
+            memory_manager.short_term.add_message("assistant", reply)
+            await broadcast("assistant.chat_message", {"role": "assistant", "content": reply, "tools_invoked": []})
+            await broadcast("assistant.state_change", {"state": "IDLE"})
+            return {"response": reply, "tools_invoked": [], "plan": {"goal": user_text, "steps": []}}
+
         # Handle direct WhatsApp automation without hallucination
         wa_match1 = re.search(r'(?:open\s+(?:your\s+)?whatsapp\s+)?search\s+for\s+(?:the\s+)?([a-zA-Z0-9_+]+)\s+and\s+(?:message|text|send\s+message\s+to)\s+(?:him|her|them)?\s*(?:like|as|saying|that|with)?\s*[:"\'\s]*(.*?)$', user_text, re.I)
         wa_match2 = re.search(r'(?:send\s+(?:a\s+)?whatsapp(?:\s+message)?|open\s+(?:your\s+)?whatsapp\s+(?:and\s+)?message|whatsapp\s+message|message\s+on\s+whatsapp)\s+(?:to\s+|for\s+)?([a-zA-Z0-9_+]+)?\s*(?:as|like|saying|that|with|text)?\s*[:"\'\s]*(.*?)$', user_text, re.I)

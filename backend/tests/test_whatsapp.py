@@ -40,3 +40,19 @@ async def test_whatsapp_intent_and_contact_memory():
     )
     assert "send_whatsapp_message" not in res_ambiguous["tools_invoked"]
 
+    # 5. Query contact number
+    res_query = await agent.process_user_request(
+        user_text="give me the number of Govardhan from WhatsApp",
+        broadcast_callback=mock_broadcast
+    )
+    assert "+919347249697" in res_query["response"]
+
+    # 6. List contacts
+    res_list = await agent.process_user_request(
+        user_text="list contacts",
+        broadcast_callback=mock_broadcast
+    )
+    assert "Govardhan" in res_list["response"]
+    assert "+919347249697" in res_list["response"]
+
+

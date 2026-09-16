@@ -47,11 +47,13 @@ class LongTermMemory:
                 logger.info(f"Deleted long-term memory: key='{key}'")
             return deleted
 
-    async def search(self, query: str = "") -> List[Dict[str, Any]]:
+    async def search(self, query: str = "", memory_type: Optional[str] = None) -> List[Dict[str, Any]]:
         async with AsyncSessionLocal() as session:
             stmt = select(DBMemory)
             if query:
                 stmt = stmt.where((DBMemory.key.ilike(f"%{query}%")) | (DBMemory.value.ilike(f"%{query}%")))
+            if memory_type:
+                stmt = stmt.where(DBMemory.type == memory_type)
             res = await session.execute(stmt)
             items = res.scalars().all()
             return [
