@@ -93,7 +93,11 @@ class OllamaProvider(AIProvider):
             "model": self.model_name,
             "messages": formatted_messages,
             "temperature": 0.2,
-            "stream": False
+            "stream": False,
+            "options": {
+                "num_ctx": 2048,
+                "num_predict": 512
+            }
         }
 
         # Ollama v0.3+ supports OpenAI tools format

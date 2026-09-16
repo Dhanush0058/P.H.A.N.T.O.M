@@ -174,7 +174,15 @@ class JarvisAgent:
                         tool_call_id=tc.id or tc.name
                     ))
 
-                # Continue loop to allow model to interpret tool result
+                # Fast-path for direct action tools (no second LLM generation needed)
+                info_gathering_tools = {"search_web", "get_page_content", "read_file", "list_files", "git_status", "git_diff", "git_log", "get_system_status", "get_processes", "recall", "search_memory", "take_screenshot"}
+                executed_names = {tc.name for tc in pending_calls}
+                if not (executed_names & info_gathering_tools):
+                    # Direct action completed — finish immediately without redundant 2nd LLM round-trip
+                    final_answer = last_tool_result_msg or "Task completed successfully."
+                    break
+
+                # Continue loop to allow model to interpret tool result for information gathering
                 continue
             else:
                 final_answer = ai_resp.content or last_tool_result_msg or "Task completed."
