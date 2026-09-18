@@ -8,7 +8,9 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const [provider, setProvider] = useState('omniroute');
+  const [provider, setProvider] = useState('mistral');
+  const [mistralKey, setMistralKey] = useState('');
+  const [mistralModel, setMistralModel] = useState('mistral-small-latest');
   const [omniUrl, setOmniUrl] = useState('http://localhost:20128/v1');
   const [omniModel, setOmniModel] = useState('auto');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
@@ -27,6 +29,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       getSettings().then((s) => {
         if (s.ai_provider) setProvider(s.ai_provider);
         if (s.ai_model) setModel(s.ai_model);
+        if (s.mistral_model) setMistralModel(s.mistral_model);
         if (s.omniroute_base_url) setOmniUrl(s.omniroute_base_url);
         if (s.omniroute_model) setOmniModel(s.omniroute_model);
         if (s.ollama_base_url) setOllamaUrl(s.ollama_base_url);
@@ -44,7 +47,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     e.preventDefault();
     const payload: Record<string, any> = {
       ai_provider: provider,
-      ai_model: model,
+      ai_model: provider === 'mistral' ? mistralModel : model,
+      mistral_model: mistralModel,
       omniroute_base_url: omniUrl,
       omniroute_model: omniModel,
       ollama_base_url: ollamaUrl,
@@ -52,6 +56,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       tts_voice: ttsVoice,
       wake_word: wakeWord,
     };
+    if (mistralKey) payload.mistral_api_key = mistralKey;
     if (geminiKey) payload.gemini_api_key = geminiKey;
     if (openaiKey) payload.openai_api_key = openaiKey;
     if (anthropicKey) payload.anthropic_api_key = anthropicKey;
@@ -92,6 +97,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               onChange={(e) => setProvider(e.target.value)}
               className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono focus:border-cyan-500"
             >
+              <option value="mistral">🌪️ Mistral AI Cloud (Zero Local RAM • Ultra-Fast • SOTA Reasoning)</option>
               <option value="ollama">💻 Ollama (Local Infinite Tokens • Offline • Zero Rate Limits)</option>
               <option value="omniroute">🚀 OmniRoute (~1.51B Free Tokens Pool / 352 Providers Gateway)</option>
               <option value="gemini">Google Gemini (Gemini 2.0 Flash / Pro)</option>
@@ -101,6 +107,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <option value="mock">Mock Offline Provider (Zero Keys)</option>
             </select>
           </div>
+
+          {/* Mistral AI Cloud Controls */}
+          {provider === 'mistral' && (
+            <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-amber-300 flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-amber-400" /> Mistral Cloud Configuration
+                </span>
+                <a
+                  href="https://console.mistral.ai"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono hover:bg-amber-500/30 underline"
+                >
+                  Get Free Key at console.mistral.ai ↗
+                </a>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-400 flex items-center gap-1">
+                    <Key className="w-3 h-3 text-amber-400" /> Mistral API Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your Mistral API Key..."
+                    value={mistralKey}
+                    onChange={(e) => setMistralKey(e.target.value)}
+                    className="w-full p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 font-mono focus:border-amber-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-400 block mb-1">Mistral Model</label>
+                  <input
+                    type="text"
+                    value={mistralModel}
+                    onChange={(e) => setMistralModel(e.target.value)}
+                    className="w-full p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 font-mono focus:border-amber-500"
+                    placeholder="mistral-small-latest"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="text-slate-500 text-[10px] py-1">Recommended Models:</span>
+                {['mistral-small-latest', 'codestral-latest', 'mistral-large-latest', 'ministral-8b-latest', 'open-mistral-nemo'].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMistralModel(m)}
+                    className={`px-2 py-0.5 rounded-md font-mono text-[10px] border transition-colors ${
+                      mistralModel === m
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Ollama Local LLM Controls */}
           {provider === 'ollama' && (

@@ -10,6 +10,7 @@ from backend.app.ai.openai_provider import OpenAIProvider
 from backend.app.ai.anthropic_provider import AnthropicProvider
 from backend.app.ai.custom_repo import CustomRepoLLMProvider
 from backend.app.ai.ollama_provider import OllamaProvider
+from backend.app.ai.mistral_provider import MistralProvider
 from backend.app.tools.registry import tool_registry
 from backend.app.agent.context import context_builder
 from backend.app.agent.planner import TaskPlanner
@@ -22,7 +23,9 @@ from backend.app.database.models import Conversation, Message as DBMessage
 
 def create_ai_provider(provider_type: Optional[str] = None) -> AIProvider:
     p_type = (provider_type or settings.AI_PROVIDER).lower()
-    if p_type == "omniroute":
+    if p_type == "mistral":
+        return MistralProvider()
+    elif p_type == "omniroute":
         return OmniRouteProvider()
     elif p_type == "ollama":
         return OllamaProvider(model_name=settings.OLLAMA_MODEL, base_url=settings.OLLAMA_BASE_URL)

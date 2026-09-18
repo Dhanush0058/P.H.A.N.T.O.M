@@ -9,6 +9,8 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 class SettingsUpdateRequest(BaseModel):
     ai_provider: Optional[str] = None
     ai_model: Optional[str] = None
+    mistral_api_key: Optional[str] = None
+    mistral_model: Optional[str] = None
     omniroute_base_url: Optional[str] = None
     omniroute_model: Optional[str] = None
     ollama_base_url: Optional[str] = None
@@ -28,6 +30,8 @@ async def get_current_settings():
         "version": settings.VERSION,
         "ai_provider": settings.AI_PROVIDER,
         "ai_model": settings.AI_MODEL,
+        "mistral_model": getattr(settings, "MISTRAL_MODEL", "mistral-small-latest"),
+        "has_mistral_key": bool(getattr(settings, "MISTRAL_API_KEY", None)),
         "omniroute_base_url": settings.OMNIROUTE_BASE_URL,
         "omniroute_model": settings.OMNIROUTE_MODEL,
         "ollama_base_url": settings.OLLAMA_BASE_URL,
@@ -47,6 +51,10 @@ async def update_settings(req: SettingsUpdateRequest):
         settings.AI_PROVIDER = req.ai_provider
     if req.ai_model:
         settings.AI_MODEL = req.ai_model
+    if req.mistral_api_key is not None:
+        settings.MISTRAL_API_KEY = req.mistral_api_key
+    if req.mistral_model is not None:
+        settings.MISTRAL_MODEL = req.mistral_model
     if req.omniroute_base_url is not None:
         settings.OMNIROUTE_BASE_URL = req.omniroute_base_url
     if req.omniroute_model is not None:
