@@ -16,7 +16,7 @@ class MistralProvider(AIProvider):
         model_name: Optional[str] = None,
         base_url: Optional[str] = None
     ):
-        self.api_key = api_key or settings.MISTRAL_API_KEY or ""
+        self.api_key = api_key if api_key is not None else (settings.MISTRAL_API_KEY or "")
         model = model_name or getattr(settings, "MISTRAL_MODEL", "mistral-small-latest")
         if model == "auto":
             model = "mistral-small-latest"
@@ -89,7 +89,20 @@ class MistralProvider(AIProvider):
         }
 
         if tools:
-            payload["tools"] = tools
+            formatted_tools = []
+            for t in tools:
+                if isinstance(t, dict) and t.get("type") == "function" and "function" in t:
+                    formatted_tools.append(t)
+                elif isinstance(t, dict):
+                    formatted_tools.append({
+                        "type": "function",
+                        "function": {
+                            "name": t.get("name"),
+                            "description": t.get("description", ""),
+                            "parameters": t.get("parameters", {"type": "object", "properties": {}})
+                        }
+                    })
+            payload["tools"] = formatted_tools
             payload["tool_choice"] = "auto"
 
         headers = {
