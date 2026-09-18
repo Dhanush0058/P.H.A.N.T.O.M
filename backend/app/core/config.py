@@ -26,11 +26,11 @@ class Settings(BaseSettings):
 
     # AI Configuration (omniroute, mistral, ollama, gemini, openai, anthropic, custom, mock)
     AI_PROVIDER: str = "mistral"
-    AI_MODEL: str = "mistral-small-latest"
+    AI_MODEL: str = "codestral-latest"
 
     # Mistral AI Cloud (State-of-the-Art Speed, Zero Local RAM)
     MISTRAL_API_KEY: Optional[str] = None
-    MISTRAL_MODEL: str = "mistral-small-latest"
+    MISTRAL_MODEL: str = "codestral-latest"
     MISTRAL_BASE_URL: str = "https://api.mistral.ai/v1"
 
     # OmniRoute (1.51B Free Tokens AI Gateway)
