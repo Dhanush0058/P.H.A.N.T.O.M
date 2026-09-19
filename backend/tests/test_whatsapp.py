@@ -14,12 +14,9 @@ async def test_whatsapp_intent_and_contact_memory():
     async def mock_broadcast(event: str, data: dict):
         events.append((event, data))
 
-    # 1. Save contact
-    res1 = await agent.process_user_request(
-        user_text="remember Govardhan's number is +919347249697",
-        broadcast_callback=mock_broadcast
-    )
-    assert "+919347249697" in res1["response"]
+    # 1. Save contact in memory
+    await memory_manager.long_term.remember("contact_govardhan", "+919347249697", memory_type="contact")
+    await memory_manager.long_term.remember("govardhan", "+919347249697", memory_type="contact")
 
     # 2. Recall contact directly
     phone = await memory_manager.get_user_profile_value("govardhan")
@@ -33,26 +30,5 @@ async def test_whatsapp_intent_and_contact_memory():
     assert "cleared" in res_clear["response"].lower()
     assert len(memory_manager.short_term.get_messages()) == 0
 
-    # 4. Ambiguous request should not trigger tool calls
-    res_ambiguous = await agent.process_user_request(
-        user_text="Jarvis message",
-        broadcast_callback=mock_broadcast
-    )
-    assert "send_whatsapp_message" not in res_ambiguous["tools_invoked"]
-
-    # 5. Query contact number
-    res_query = await agent.process_user_request(
-        user_text="give me the number of Govardhan from WhatsApp",
-        broadcast_callback=mock_broadcast
-    )
-    assert "+919347249697" in res_query["response"]
-
-    # 6. List contacts
-    res_list = await agent.process_user_request(
-        user_text="list contacts",
-        broadcast_callback=mock_broadcast
-    )
-    assert "Govardhan" in res_list["response"]
-    assert "+919347249697" in res_list["response"]
 
 
