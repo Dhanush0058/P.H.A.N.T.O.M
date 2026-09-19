@@ -54,21 +54,49 @@ export const App: React.FC = () => {
 
   const socketRef = useRef<WebSocket | null>(null);
   const recognitionRef = useRef<any>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize Web Speech Recognition
+  const stopVoiceResponse = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ action: 'interrupt' }));
+    }
+  };
+
+  // Initialize Web Speech Recognition with real-time barge-in interruption
   useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      recognition.onspeechstart = () => {
+        // Copilot-style instant barge-in: halt assistant voice as soon as user speaks
+        stopVoiceResponse();
+        setState('LISTENING');
+      };
+
       recognition.onresult = (event: any) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.trim();
-        if (transcript) {
-          handleUserSubmit(transcript);
+        // Immediately halt any remaining audio stream
+        stopVoiceResponse();
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult.isFinal) {
+          const transcript = lastResult[0].transcript.trim();
+          if (transcript) {
+            handleUserSubmit(transcript);
+          }
         }
       };
 
@@ -194,13 +222,25 @@ export const App: React.FC = () => {
   };
 
   const playVoiceResponse = async (text: string) => {
+    stopVoiceResponse();
     try {
       const audioBlob = await synthesizeTTS(text);
       if (audioBlob.size > 0) {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
-        audio.onended = () => setState('IDLE');
-        audio.onerror = () => setState('IDLE');
+        currentAudioRef.current = audio;
+        audio.onended = () => {
+          if (currentAudioRef.current === audio) {
+            currentAudioRef.current = null;
+            setState('IDLE');
+          }
+        };
+        audio.onerror = () => {
+          if (currentAudioRef.current === audio) {
+            currentAudioRef.current = null;
+            setState('IDLE');
+          }
+        };
         await audio.play();
       } else {
         setState('IDLE');
@@ -215,6 +255,8 @@ export const App: React.FC = () => {
     const query = textToSend || inputText;
     if (!query.trim()) return;
 
+    // Instant interruption: stop current audio and cancel backend tasks
+    stopVoiceResponse();
     setInputText('');
     setStreamingThought('Processing user request...');
     setState('THINKING');
@@ -259,6 +301,7 @@ export const App: React.FC = () => {
       setState('IDLE');
     } else {
       try {
+        stopVoiceResponse();
         recognitionRef.current.start();
         setIsListening(true);
         setState('LISTENING');

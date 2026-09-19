@@ -109,17 +109,31 @@ async def websocket_endpoint(websocket: WebSocket):
             "data": {"state": "IDLE"}
         }))
 
+        active_agent_task: Optional[asyncio.Task] = None
+
         while True:
             raw_data = await websocket.receive_text()
             try:
                 msg = json.loads(raw_data)
                 action = msg.get("action")
 
-                if action == "chat":
+                if action == "interrupt":
+                    if active_agent_task and not active_agent_task.done():
+                        logger.info("Interrupt received: Cancelling active agent task.")
+                        active_agent_task.cancel()
+                    await manager.broadcast("assistant.state_change", {"state": "IDLE"})
+
+                elif action == "chat":
                     text = msg.get("text", "")
                     cid = msg.get("conversation_id")
-                    # Run agent processing in task so socket stays responsive
-                    asyncio.create_task(
+                    
+                    # If an existing agent query is running, cancel it to prioritize the new user input immediately
+                    if active_agent_task and not active_agent_task.done():
+                        logger.info("New message arrived: Cancelling previous agent task for barge-in responsiveness.")
+                        active_agent_task.cancel()
+
+                    # Run agent processing in tracked task
+                    active_agent_task = asyncio.create_task(
                         jarvis_agent.process_user_request(
                             user_text=text,
                             conversation_id=cid,
@@ -133,6 +147,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     permission_manager.resolve_request(req_id, approved)
 
                 elif action == "emergency_stop":
+                    if active_agent_task and not active_agent_task.done():
+                        active_agent_task.cancel()
                     emergency_manager.trigger_stop()
                     await manager.broadcast("assistant.emergency_stop", {"stopped": True})
 
