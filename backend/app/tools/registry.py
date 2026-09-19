@@ -32,6 +32,8 @@ from backend.app.tools.git_tools import (
 )
 from backend.app.tools.github_tools import (
     GitHubSearchReposTool,
+    GitHubGetUserReposTool,
+    GitHubGetRepoContentTool,
     GitHubCreateIssueTool
 )
 from backend.app.tools.memory_tools import (
@@ -93,7 +95,13 @@ class ToolRegistry:
         "change_code": "edit_file",
         "edit_code": "edit_file",
         "update_code": "edit_file",
-        "replace_in_file": "edit_file"
+        "replace_in_file": "edit_file",
+        "my_repos": "github_get_user_repos",
+        "my_github": "github_get_user_repos",
+        "user_repos": "github_get_user_repos",
+        "github_repos": "github_get_user_repos",
+        "repo_content": "github_get_repo_content",
+        "read_repo": "github_get_repo_content"
     }
 
     def get_tool(self, name: str) -> Optional[BaseTool]:
@@ -150,6 +158,8 @@ class ToolRegistry:
 
         # GitHub
         self.register(GitHubSearchReposTool())
+        self.register(GitHubGetUserReposTool())
+        self.register(GitHubGetRepoContentTool())
         self.register(GitHubCreateIssueTool())
 
         # Memory
