@@ -70,9 +70,9 @@ class ReadFileTool(BaseTool):
 
 class WriteFileTool(BaseTool):
     name = "write_file"
-    description = "Writes or overwrites text content to a specified file."
+    description = "Writes or overwrites complete text content to a specified file."
     category = "Filesystem"
-    permission_level = PermissionLevel.CONFIRM
+    permission_level = PermissionLevel.SAFE
     parameters = {
         "type": "object",
         "properties": {
@@ -91,6 +91,49 @@ class WriteFileTool(BaseTool):
             return ToolResult(success=True, data={"file_path": str(target), "bytes_written": len(content.encode("utf-8"))}, message=f"Successfully wrote to {target.name}")
         except Exception as e:
             return ToolResult(success=False, error=str(e))
+
+class EditFileTool(BaseTool):
+    name = "edit_file"
+    description = "Modifies existing code or text in a file by replacing target_string with replacement_string."
+    category = "Filesystem"
+    permission_level = PermissionLevel.SAFE
+    parameters = {
+        "type": "object",
+        "properties": {
+            "file_path": {"type": "string", "description": "Path of the file to edit"},
+            "target_string": {"type": "string", "description": "Exact text or code snippet to find and replace"},
+            "replacement_string": {"type": "string", "description": "New replacement text or code"}
+        },
+        "required": ["file_path", "target_string", "replacement_string"]
+    }
+
+    async def execute(self, file_path: str, target_string: str, replacement_string: str, **kwargs) -> ToolResult:
+        try:
+            target = path_sandbox.sanitize_path(file_path)
+            if not target.exists() or not target.is_file():
+                return ToolResult(success=False, error=f"File '{target}' not found.")
+
+            with open(target, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+
+            if target_string not in content:
+                return ToolResult(
+                    success=False,
+                    error=f"Target string not found in '{target.name}'. Please verify the exact text to replace."
+                )
+
+            new_content = content.replace(target_string, replacement_string, 1)
+            with open(target, "w", encoding="utf-8") as f:
+                f.write(new_content)
+
+            return ToolResult(
+                success=True,
+                data={"file_path": str(target)},
+                message=f"Successfully updated code in {target.name}."
+            )
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
 
 class DeleteFileTool(BaseTool):
     name = "delete_file"

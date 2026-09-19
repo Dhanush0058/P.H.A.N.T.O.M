@@ -7,12 +7,15 @@ from backend.app.tools.computer import (
     MouseControlTool,
     KeyboardControlTool,
     SendWhatsAppMessageTool,
-    TypeAndPressEnterTool
+    TypeAndPressEnterTool,
+    MediaVolumeControlTool,
+    ClipboardTool
 )
 from backend.app.tools.filesystem import (
     ListFilesTool,
     ReadFileTool,
     WriteFileTool,
+    EditFileTool,
     DeleteFileTool
 )
 from backend.app.tools.terminal import RunCommandTool
@@ -76,7 +79,21 @@ class ToolRegistry:
         "reboot": "system_power_control",
         "lock": "system_power_control",
         "lock_screen": "system_power_control",
-        "sleep": "system_power_control"
+        "sleep": "system_power_control",
+        "volume_up": "media_volume_control",
+        "volume_down": "media_volume_control",
+        "mute": "media_volume_control",
+        "unmute": "media_volume_control",
+        "media_control": "media_volume_control",
+        "play_pause": "media_volume_control",
+        "clipboard": "clipboard_control",
+        "copy": "clipboard_control",
+        "paste": "clipboard_control",
+        "modify_file": "edit_file",
+        "change_code": "edit_file",
+        "edit_code": "edit_file",
+        "update_code": "edit_file",
+        "replace_in_file": "edit_file"
     }
 
     def get_tool(self, name: str) -> Optional[BaseTool]:
@@ -107,11 +124,14 @@ class ToolRegistry:
         self.register(KeyboardControlTool())
         self.register(SendWhatsAppMessageTool())
         self.register(TypeAndPressEnterTool())
+        self.register(MediaVolumeControlTool())
+        self.register(ClipboardTool())
 
         # Filesystem
         self.register(ListFilesTool())
         self.register(ReadFileTool())
         self.register(WriteFileTool())
+        self.register(EditFileTool())
         self.register(DeleteFileTool())
 
         # Terminal

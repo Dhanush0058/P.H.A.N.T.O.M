@@ -288,3 +288,95 @@ class TypeAndPressEnterTool(BaseTool):
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
+class MediaVolumeControlTool(BaseTool):
+    name = "media_volume_control"
+    description = "Controls Windows system audio volume, mute/unmute, and media playback (play/pause, next track, previous track)."
+    category = "Computer"
+    permission_level = PermissionLevel.SAFE
+    parameters = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["volume_up", "volume_down", "mute", "unmute", "play_pause", "next_track", "prev_track"],
+                "description": "Audio or media action to perform"
+            },
+            "steps": {
+                "type": "integer",
+                "description": "Number of volume steps (default: 5 for ~10% change)"
+            }
+        },
+        "required": ["action"]
+    }
+
+    async def execute(self, action: str, steps: int = 5, **kwargs) -> ToolResult:
+        act = action.lower().strip()
+        try:
+            if act in ["volume_up", "up", "increase", "louder"]:
+                pyautogui.press("volumeup", presses=max(1, min(steps, 25)))
+                return ToolResult(success=True, message="Volume increased.")
+            elif act in ["volume_down", "down", "decrease", "softer", "quieter"]:
+                pyautogui.press("volumedown", presses=max(1, min(steps, 25)))
+                return ToolResult(success=True, message="Volume decreased.")
+            elif act in ["mute", "unmute", "toggle_mute"]:
+                pyautogui.press("volumemute")
+                return ToolResult(success=True, message="Audio mute toggled.")
+            elif act in ["play_pause", "play", "pause", "toggle_playback"]:
+                pyautogui.press("playpause")
+                return ToolResult(success=True, message="Media playback toggled.")
+            elif act in ["next_track", "next", "skip"]:
+                pyautogui.press("nexttrack")
+                return ToolResult(success=True, message="Skipped to next media track.")
+            elif act in ["prev_track", "previous", "previous_track", "back"]:
+                pyautogui.press("prevtrack")
+                return ToolResult(success=True, message="Returned to previous media track.")
+            else:
+                return ToolResult(success=False, error=f"Unknown media action: '{action}'. Supported: volume_up, volume_down, mute, play_pause, next_track, prev_track")
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+class ClipboardTool(BaseTool):
+    name = "clipboard_control"
+    description = "Reads from or writes text to the Windows system clipboard."
+    category = "Computer"
+    permission_level = PermissionLevel.SAFE
+    parameters = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["get", "set", "clear"],
+                "description": "'get' to read copied clipboard text, 'set' to copy text to clipboard, 'clear' to empty"
+            },
+            "text": {
+                "type": "string",
+                "description": "Text to write to clipboard (required if action is 'set')"
+            }
+        },
+        "required": ["action"]
+    }
+
+    async def execute(self, action: str, text: Optional[str] = None, **kwargs) -> ToolResult:
+        import pyperclip
+        act = action.lower().strip()
+        try:
+            if act in ["get", "read", "paste"]:
+                content = pyperclip.paste()
+                return ToolResult(
+                    success=True,
+                    data={"clipboard": content},
+                    message=f"Clipboard content: '{content[:200]}...'" if len(content) > 200 else f"Clipboard content: '{content}'"
+                )
+            elif act in ["set", "copy", "write"]:
+                val = text or kwargs.get("content") or ""
+                pyperclip.copy(val)
+                return ToolResult(success=True, message=f"Copied text to clipboard ({len(val)} characters).")
+            elif act in ["clear", "empty"]:
+                pyperclip.copy("")
+                return ToolResult(success=True, message="Clipboard cleared.")
+            else:
+                return ToolResult(success=False, error=f"Unknown clipboard action: '{action}'")
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
