@@ -39,7 +39,8 @@ from backend.app.tools.memory_tools import (
 )
 from backend.app.tools.system_tools import (
     GetSystemStatusTool,
-    GetProcessesTool
+    GetProcessesTool,
+    SystemPowerControlTool
 )
 from backend.app.core.logging import logger
 
@@ -66,7 +67,16 @@ class ToolRegistry:
         "exec_command": "run_command",
         "execute_command": "run_command",
         "search": "search_web",
-        "open_url": "open_browser"
+        "open_url": "open_browser",
+        "shutdown": "system_power_control",
+        "shutdown_laptop": "system_power_control",
+        "power_off": "system_power_control",
+        "poweroff": "system_power_control",
+        "restart": "system_power_control",
+        "reboot": "system_power_control",
+        "lock": "system_power_control",
+        "lock_screen": "system_power_control",
+        "sleep": "system_power_control"
     }
 
     def get_tool(self, name: str) -> Optional[BaseTool]:
@@ -131,5 +141,6 @@ class ToolRegistry:
         # System
         self.register(GetSystemStatusTool())
         self.register(GetProcessesTool())
+        self.register(SystemPowerControlTool())
 
 tool_registry = ToolRegistry()

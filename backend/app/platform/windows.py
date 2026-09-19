@@ -139,4 +139,51 @@ class WindowsPlatform(BasePlatform):
                 "error": str(e)
             }
 
+    def system_power_action(self, action: str, delay_seconds: int = 15) -> Dict[str, Any]:
+        action_clean = action.lower().strip()
+        try:
+            if action_clean in ["shutdown", "poweroff", "turn_off", "turn off", "power_off", "shut_down"]:
+                subprocess.Popen(f"shutdown /s /t {delay_seconds}", shell=True)
+                return {
+                    "success": True,
+                    "action": "shutdown",
+                    "message": f"System shutdown initiated. Your laptop will shut down in {delay_seconds} seconds. (Say 'cancel shutdown' to abort)."
+                }
+            elif action_clean in ["restart", "reboot"]:
+                subprocess.Popen(f"shutdown /r /t {delay_seconds}", shell=True)
+                return {
+                    "success": True,
+                    "action": "restart",
+                    "message": f"System restart initiated. Your laptop will restart in {delay_seconds} seconds."
+                }
+            elif action_clean in ["lock", "lock_screen", "lock screen"]:
+                subprocess.Popen("rundll32.exe user32.dll,LockWorkStation", shell=True)
+                return {
+                    "success": True,
+                    "action": "lock",
+                    "message": "Workstation screen locked successfully."
+                }
+            elif action_clean in ["sleep", "suspend", "hibernate"]:
+                subprocess.Popen("rundll32.exe powrprof.dll,SetSuspendState 0,1,0", shell=True)
+                return {
+                    "success": True,
+                    "action": "sleep",
+                    "message": "Entering system sleep mode."
+                }
+            elif action_clean in ["cancel", "cancel_shutdown", "cancel shutdown", "abort"]:
+                subprocess.Popen("shutdown /a", shell=True)
+                return {
+                    "success": True,
+                    "action": "cancel",
+                    "message": "Scheduled shutdown/restart has been cancelled."
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Unknown power action: '{action}'. Supported actions: shutdown, restart, lock, sleep, cancel."
+                }
+        except Exception as e:
+            logger.error(f"Power action '{action}' failed: {str(e)}")
+            return {"success": False, "error": str(e)}
+
 windows_platform = WindowsPlatform()

@@ -386,7 +386,7 @@ export const App: React.FC = () => {
                   ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-lg shadow-emerald-500/30 scale-105 animate-pulse'
                   : 'bg-slate-900 border-slate-800 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-400'
               }`}
-              title={isListening ? 'Stop Listening' : 'Start Voice Input ("Hey Jarvis")'}
+              title={isListening ? 'Stop Listening' : 'Start Voice Input ("Hey Phantom")'}
             >
               {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
             </button>
@@ -397,7 +397,7 @@ export const App: React.FC = () => {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Give JARVIS a command (e.g., 'Open Chrome', 'What's the system status?', 'Remember my project')..."
+                placeholder="Give PHANTOM a command (e.g., 'Shut down my laptop', 'What's the system status?', 'Open Chrome')..."
                 className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-slate-800 focus:border-cyan-500/70 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 font-sans shadow-inner transition"
               />
             </div>

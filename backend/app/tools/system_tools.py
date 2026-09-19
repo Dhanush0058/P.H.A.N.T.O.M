@@ -31,3 +31,30 @@ class GetProcessesTool(BaseTool):
             data={"processes": procs},
             message=f"Retrieved {len(procs)} active processes"
         )
+
+class SystemPowerControlTool(BaseTool):
+    name = "system_power_control"
+    description = "Controls computer power states: shutdown laptop/PC, restart, lock screen, sleep mode, or cancel scheduled shutdown."
+    category = "System"
+    permission_level = PermissionLevel.DANGEROUS
+    parameters = {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["shutdown", "restart", "lock", "sleep", "cancel"],
+                "description": "Power action to perform: 'shutdown', 'restart', 'lock', 'sleep', or 'cancel'"
+            },
+            "delay_seconds": {
+                "type": "integer",
+                "description": "Optional delay in seconds before shutdown/restart (default: 15)"
+            }
+        },
+        "required": ["action"]
+    }
+
+    async def execute(self, action: str, delay_seconds: int = 15, **kwargs) -> ToolResult:
+        res = windows_platform.system_power_action(action, delay_seconds)
+        if res.get("success"):
+            return ToolResult(success=True, data=res, message=res.get("message"))
+        return ToolResult(success=False, error=res.get("error"))

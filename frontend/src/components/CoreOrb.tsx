@@ -95,10 +95,10 @@ export const CoreOrb: React.FC<CoreOrbProps> = ({ state }) => {
         }}
       >
         {/* Core HUD Branding */}
-        <span className="text-[11px] font-mono tracking-[0.3em] font-black text-white/90 drop-shadow-md">
-          JARVIS
+        <span className="text-[10px] font-mono tracking-[0.25em] font-black text-white/90 drop-shadow-md">
+          PHANTOM
         </span>
-        <span className={`text-[9px] font-mono font-semibold tracking-widest ${style.text} opacity-90`}>
+        <span className={`text-[8px] font-mono font-semibold tracking-widest ${style.text} opacity-90`}>
           CORE
         </span>
       </div>

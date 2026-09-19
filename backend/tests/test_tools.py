@@ -41,3 +41,17 @@ async def test_filesystem_tools(tmp_path):
     d_res = await deleter.execute(file_path=str(test_file))
     assert d_res.success is True
     assert not test_file.exists()
+
+@pytest.mark.asyncio
+async def test_system_power_tool_registration():
+    from backend.app.tools.system_tools import SystemPowerControlTool
+    tool = tool_registry.get_tool("system_power_control")
+    assert tool is not None
+    assert tool_registry.get_tool("shutdown") is not None
+    assert tool_registry.get_tool("restart") is not None
+    assert tool_registry.get_tool("lock_screen") is not None
+    # Test cancel action safely
+    p_tool = SystemPowerControlTool()
+    res = await p_tool.execute(action="cancel")
+    assert res.success is True
+

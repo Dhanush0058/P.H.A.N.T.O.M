@@ -26,9 +26,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ messages, streamin
           <div className="w-10 h-10 mb-3 rounded-full border border-cyan-500/20 flex items-center justify-center text-cyan-400">
             <Bot className="w-5 h-5" />
           </div>
-          <p className="text-slate-400 font-medium">JARVIS Core Operational</p>
+          <p className="text-slate-400 font-medium">PHANTOM Core Operational</p>
           <p className="text-xs text-slate-600 mt-1 max-w-sm">
-            Say &ldquo;Hey Jarvis&rdquo; or type a command below. Try &ldquo;Open VS Code&rdquo;, &ldquo;System status&rdquo;, or &ldquo;Search for AI news&rdquo;.
+            Say &ldquo;Hey Phantom&rdquo; or type a command below. Try &ldquo;Shut down my laptop&rdquo;, &ldquo;Check system status&rdquo;, or &ldquo;Open Chrome&rdquo;.
           </p>
         </div>
       )}
@@ -57,7 +57,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ messages, streamin
                   <div className="w-4 h-4 rounded-full bg-cyan-500/20 border border-cyan-400 flex items-center justify-center">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                   </div>
-                  <span className="font-semibold tracking-wider">JARVIS</span>
+                  <span className="font-semibold tracking-wider">PHANTOM</span>
                   <span className="text-slate-500 ml-auto">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
 

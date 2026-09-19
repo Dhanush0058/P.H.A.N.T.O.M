@@ -17,7 +17,7 @@ CANONICAL_DB_FILE = (DATA_DIR / "jarvis.db").resolve().as_posix()
 CANONICAL_DB_URL = f"sqlite+aiosqlite:///{CANONICAL_DB_FILE}"
 
 class Settings(BaseSettings):
-    APP_NAME: str = "JARVIS - Personal AI Operating Assistant"
+    APP_NAME: str = "PHANTOM - Personal AI Operating Assistant"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
     HOST: str = "127.0.0.1"
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     # Voice / Audio
     DEFAULT_TTS_VOICE: str = "en-US-ChristopherNeural"
     TTS_RATE: str = "+0%"
-    WAKE_WORD: str = "hey jarvis"
+    WAKE_WORD: str = "hey phantom"
     VOICE_ENABLED: bool = True
 
     # Security Guardrails
