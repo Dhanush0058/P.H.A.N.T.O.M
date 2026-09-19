@@ -84,17 +84,18 @@ class GitHubSearchReposTool(BaseTool):
 
 class GitHubGetUserReposTool(BaseTool):
     name = "github_get_user_repos"
-    description = "Fetches the list of all public GitHub repositories owned by the user (e.g. Dhanush0058)."
+    description = "Fetches the complete list of all public GitHub repositories owned by the user (e.g. Dhanush0058)."
     category = "GitHub"
     permission_level = PermissionLevel.SAFE
     parameters = {
         "type": "object",
         "properties": {
-            "username": {"type": "string", "description": "GitHub username (defaults to user Dhanush0058 if omitted)"}
+            "username": {"type": "string", "description": "GitHub username (defaults to user Dhanush0058 if omitted)"},
+            "include_forks": {"type": "boolean", "description": "Whether to include forked repositories (default true)"}
         }
     }
 
-    async def execute(self, username: Optional[str] = None, **kwargs) -> ToolResult:
+    async def execute(self, username: Optional[str] = None, include_forks: bool = True, **kwargs) -> ToolResult:
         try:
             target_user = username or get_default_github_user()
             token = os.getenv("GITHUB_TOKEN")
@@ -102,27 +103,41 @@ class GitHubGetUserReposTool(BaseTool):
             if token:
                 headers["Authorization"] = f"token {token}"
 
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                res = await client.get(f"https://api.github.com/users/{target_user}/repos?sort=updated&per_page=20", headers=headers)
-                if res.status_code == 200:
-                    items = res.json()
-                    repos = [
-                        {
-                            "name": item["name"],
-                            "full_name": item["full_name"],
-                            "description": item.get("description") or "No description",
-                            "language": item.get("language"),
-                            "url": item["html_url"],
-                            "updated_at": item.get("updated_at")
-                        }
-                        for item in items
-                    ]
-                    return ToolResult(
-                        success=True,
-                        data={"repos": repos, "username": target_user},
-                        message=f"Retrieved {len(repos)} repositories for user '{target_user}'"
+            all_repos = []
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                for page in range(1, 4):  # Fetch up to 300 repositories across pages
+                    res = await client.get(
+                        f"https://api.github.com/users/{target_user}/repos?sort=updated&per_page=100&page={page}",
+                        headers=headers
                     )
-                return ToolResult(success=False, error=f"Failed to fetch repositories for {target_user}: {res.text}")
+                    if res.status_code == 200:
+                        items = res.json()
+                        if not items:
+                            break
+                        for item in items:
+                            if not include_forks and item.get("fork"):
+                                continue
+                            all_repos.append({
+                                "name": item["name"],
+                                "full_name": item["full_name"],
+                                "description": item.get("description") or "No description",
+                                "language": item.get("language") or "N/A",
+                                "stars": item.get("stargazers_count", 0),
+                                "forks": item.get("forks_count", 0),
+                                "url": item["html_url"],
+                                "updated_at": item.get("updated_at")
+                            })
+                        if len(items) < 100:
+                            break
+                    else:
+                        break
+
+            repo_names = [r["name"] for r in all_repos]
+            return ToolResult(
+                success=True,
+                data={"total_count": len(all_repos), "username": target_user, "repositories": all_repos, "repository_names": repo_names},
+                message=f"Found {len(all_repos)} repositories for user '{target_user}': {', '.join(repo_names)}"
+            )
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
